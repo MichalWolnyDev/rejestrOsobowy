@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 
 namespace rejestrOsobowy
@@ -32,25 +33,25 @@ namespace rejestrOsobowy
 
         public bool addPersonData(int id, string name, string surname, int age, string sex, string postal, string city, string street, int homeNumber)
         {
-            persons.Add(new Person
-            {
-                Id = id,
-                Name = name,
-                Surname = surname,
-                Age = age,
-                Sex = sex,
-                PostalCode = postal,
-                City = city,
-                Street = street,
-                HomeNumber = homeNumber
 
-            });
-
-            JsonSerializer serializer = new JsonSerializer();
-
-
-            if (!File.Exists("db.json"))
+           if (new FileInfo("db.json").Length == 0)
            {
+                persons.Add(new Person
+                {
+                    Id = id,
+                    Name = name,
+                    Surname = surname,
+                    Age = age,
+                    Sex = sex,
+                    PostalCode = postal,
+                    City = city,
+                    Street = street,
+                    HomeNumber = homeNumber
+
+                });
+
+                JsonSerializer serializer = new JsonSerializer();
+
                 using (StreamWriter file = File.CreateText(@"db.json"))
                 {
                    serializer.Serialize(file, persons);
@@ -79,6 +80,8 @@ namespace rejestrOsobowy
 
                 string jsonData = JsonConvert.SerializeObject(personList);
                 File.WriteAllText(@"db.json", jsonData);
+
+                Console.WriteLine("Osoba zostala dodana do bazy");
             }
 
 
@@ -117,13 +120,58 @@ namespace rejestrOsobowy
 
             List<Person> personList = JsonConvert.DeserializeObject<List<Person>>(jsonString);
 
-            if (personList.Exists(x => x.Id == id))
+            try
             {
-                return true;
-            }
 
+                if (personList != null)
+                {
+                    if (personList.Exists(x => x.Id == id))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (NullReferenceException e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
             return false;
-        
+
+
+        }
+
+        public void deletePerson()
+        {
+            var json = File.ReadAllText(@"db.json");
+            try
+            {
+                JArray usersArray = JArray.Parse(json);
+                Console.Write("Podaj id uzytkownika: ");
+                var userId = Convert.ToInt32(Console.ReadLine());
+
+                if (userId > 0)
+                {
+                    var companyToDeleted = usersArray.FirstOrDefault(obj => obj["Id"].Value<int>() == userId);
+
+                    usersArray.Remove(companyToDeleted);
+
+                    string output = JsonConvert.SerializeObject(usersArray, Newtonsoft.Json.Formatting.Indented);
+                    File.WriteAllText(@"db.json", output);
+
+                    Console.WriteLine("Uzytkownik zostal usuniety");
+                }
+                else
+                {
+                    Console.Write("Niepoprawne id, sprobuj ponownie");
+                    deletePerson();
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
     }
     class Program
@@ -148,6 +196,8 @@ namespace rejestrOsobowy
             Console.WriteLine("Wybierz opcje:");
             Console.WriteLine("1) Dodaj osobe:");
             Console.WriteLine("2) Wyświetl baze osob:");
+            Console.WriteLine("3) Usuń osobę z bazy:");
+            var pl = new PersonList();
 
             switch (Console.ReadLine())
             {
@@ -155,9 +205,11 @@ namespace rejestrOsobowy
                     addPerson();
                     return true;  
                 case "2":
-                    var pl = new PersonList();
                     pl.getPersonList();
                     Console.ReadKey();
+                    return true;
+                case "3":
+                    pl.deletePerson();
                     return true;
                 default:
                     return true;
@@ -168,45 +220,58 @@ namespace rejestrOsobowy
         {
             var personData = new PersonList();
 
-            Console.WriteLine("Podaj ID");
-            int id = Int32.Parse(Console.ReadLine());
-
-            if (personData.checkPersonExists(id))
+            if (!File.Exists("db.json"))
             {
-                Console.WriteLine("Osoba o podanym id juz istnieje");
-                Console.ReadKey();
+                File.CreateText(@"db.json");
+                Console.WriteLine("Stworzono plik z baza");
 
                 addPerson();
             }
+            else
+            {
 
-            Console.WriteLine("Podaj imie");
-            string name = Console.ReadLine();
+                Console.WriteLine("Podaj ID");
+                int id = Int32.Parse(Console.ReadLine());
 
-            Console.WriteLine("Podaj nazwisko");
-            string surname = Console.ReadLine();
+                if (personData.checkPersonExists(id))
+                {
+                    Console.WriteLine("Osoba o podanym id juz istnieje");
+                    Console.ReadKey();
 
-            Console.WriteLine("Podaj wiek");
-            int age = Int32.Parse(Console.ReadLine());
+                    addPerson();
+                }
 
-            Console.WriteLine("Podaj plec");
-            string sex = Console.ReadLine();
+                Console.WriteLine("Podaj imie");
+                string name = Console.ReadLine();
 
-            Console.WriteLine("Podaj kod pocztowy");
-            string postal = Console.ReadLine();
+                Console.WriteLine("Podaj nazwisko");
+                string surname = Console.ReadLine();
 
-            Console.WriteLine("Podaj miasto");
-            string city = Console.ReadLine();
+                Console.WriteLine("Podaj wiek");
+                int age = Int32.Parse(Console.ReadLine());
 
-            Console.WriteLine("Podaj ulica");
-            string street = Console.ReadLine();
-      
-            Console.WriteLine("Podaj numer domu");
-            int homeNumber = Int32.Parse(Console.ReadLine());
+                Console.WriteLine("Podaj plec");
+                string sex = Console.ReadLine();
+
+                Console.WriteLine("Podaj kod pocztowy");
+                string postal = Console.ReadLine();
+
+                Console.WriteLine("Podaj miasto");
+                string city = Console.ReadLine();
+
+                Console.WriteLine("Podaj ulica");
+                string street = Console.ReadLine();
+
+                Console.WriteLine("Podaj numer domu");
+                int homeNumber = Int32.Parse(Console.ReadLine());
 
 
-            personData.addPersonData(id, name, surname, age, sex, postal, city, street, homeNumber);
+                personData.addPersonData(id, name, surname, age, sex, postal, city, street, homeNumber);
 
-          
+            }
+
+
+
 
             Console.ReadKey();
         }
